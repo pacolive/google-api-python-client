@@ -1,0 +1,5 @@
+functions-framework==3.2.1
+flask==2.1.0
+google-cloud-error-reporting==1.6.0
+google-auth-oauthlib==1.0.0
+google-api-python-client==1.7.9
