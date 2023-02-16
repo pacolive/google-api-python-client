@@ -20,11 +20,24 @@ def moveRenameFile(request):
     creds = None
 
     # If modifying these scopes, delete the file token.json.
-    SCOPES = ['https://www.googleapis.com/auth/drive']
+    SCOPES = ['https://www.googleapis.com/auth/drive','https://www.googleapis.com/auth/spreadsheets']
 
-    # Define Project Name 
-    projectName = request.args.get('projectname')
+    # The ID and range of a sample spreadsheet.
+    SPREADSHEET_ID = '1rQuZB_9PAjhD8YoueAXzfUoLLLg9CzAnX74TrWNfs6I'
+    RANGE_NAME = 'URLWEBIA!A:B'
+
+    success = "success"
+    error = "error"
+
+    # Define Origin Folder
     originFolder = request.args.get('originfolder')
+
+    # Define File Name
+    fileName = request.args.get('projectname')
+
+    # Define Project Name
+    projectName = request.args.get('projectname').split('-', 1)[0]
+    print(projectName)
 
     #destinationFolder = '1LN1_ZfANuOuEKjSIahjDBmwgx1V6-4qw'
     destinationFolder = '1elS4f5LqW0mvp0xTdTKbUYGOnGXMEuk5'
@@ -59,8 +72,9 @@ def moveRenameFile(request):
         items = results.get('files', [])
 
         if not items:
-            print('No files found.')
-            return
+            # No templates available
+            error = "No templates available"
+            return error
         else:
             # Print the name of the file to move
             # print(u'{0} ({1})'.format(items[0]['name'], items[0]['id']))
@@ -72,16 +86,25 @@ def moveRenameFile(request):
                                       removeParents=previous_parents,
                                       fields='id, parents').execute()
             # Rename the file
-            body = {'name': projectName}
+            body = {'name': fileName}
             service.files().update(fileId=items[0]['id'], body=body).execute()
             
             # Print amount of files in the folder
-            print("Templates available: ",len(items) - 1)
+            success = "Templates available: " + str(len(items) - 1)
+
+            service = build('sheets', 'v4', credentials=creds)
+
+            # Call the Sheets API
+            rows = [projectName, "https://docs.google.com/spreadsheets/d/" + items[0]['id']],["", ""]
+            resource = {
+            "majorDimension": "ROWS",
+            "values": rows
+            }
+            service.spreadsheets().values().append(spreadsheetId=SPREADSHEET_ID,range=RANGE_NAME,body=resource,valueInputOption="USER_ENTERED").execute()
             
-            return
+            return success
     except HttpError as error:
         # TODO(developer) - Handle errors from drive API.
         print(f'An error occurred: {error}')
-
-    return
+    return success
 # [END moveRenameFile]
