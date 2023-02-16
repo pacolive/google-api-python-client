@@ -23,21 +23,26 @@ def moveRenameFile(request):
     SCOPES = ['https://www.googleapis.com/auth/drive','https://www.googleapis.com/auth/spreadsheets']
 
     # The ID and range of a sample spreadsheet.
-    SPREADSHEET_ID = ''
+    SPREADSHEET_ID = '1rQuZB_9PAjhD8YoueAXzfUoLLLg9CzAnX74TrWNfs6I'
     RANGE_NAME = 'URLWEBIA!A:B'
-    destinationFolder = ''
+
     success = "success"
     error = "error"
 
-    # Define Origin Folder
-    originFolder = request.args.get('originfolder')
+    # Define Template
+    templateid = request.args.get('templateid')
 
-    # Define File Name
-    fileName = request.args.get('projectname')
+    # Define Destination Folder
+    destinationFolder = request.args.get('dest')
 
     # Define Project Name
-    projectName = request.args.get('projectname').split('-', 1)[0]
-    print(projectName)
+    projectName = request.args.get('project')
+
+    # Define Project Key
+    projectKey = request.args.get('key')
+
+    # Define File Name
+    fileName = request.args.get('project') + str(projectKey)
 
     # The file token.json stores the user's access and refresh tokens, and is
     # created automatically when the authorization flow completes for the first
@@ -60,46 +65,37 @@ def moveRenameFile(request):
         # call drive api client
         service = build('drive', 'v3', credentials=creds)
 
-        # Get one of the templates
-        page_token = None
-        results = service.files().list(
-        q=f"'{originFolder}' in parents",
-        pageSize=10, fields="nextPageToken, files(id, name)",
-        pageToken=page_token).execute()
-        items = results.get('files', [])
+        # Clone the template
+        newfile = {'name': fileName, 'parents' : [ { "id" : destinationFolder } ]}
+        clone = service.files().copy(fileId=templateid, body=newfile).execute()
 
-        if not items:
-            # No templates available
-            error = "No templates available"
-            return error
-        else:
-            # Print the name of the file to move
-            # print(u'{0} ({1})'.format(items[0]['name'], items[0]['id']))
-            # Retrieve the existing parents to remove
-            file = service.files().get(fileId=items[0]['id'], fields='parents').execute()
-            previous_parents = ",".join(file.get('parents'))
-            # Move the file to the new folder
-            file = service.files().update(fileId=items[0]['id'], addParents=destinationFolder,
-                                      removeParents=previous_parents,
-                                      fields='id, parents').execute()
-            # Rename the file
-            body = {'name': fileName}
-            service.files().update(fileId=items[0]['id'], body=body).execute()
-            
-            # Print amount of files in the folder
-            success = "Templates available: " + str(len(items) - 1)
+        # Retrieve the clone existing parents to remove
+        file = service.files().get(fileId=clone.get('id'), fields='parents').execute()
+        previous_parents = ",".join(file.get('parents'))
 
-            service = build('sheets', 'v4', credentials=creds)
+        # Move the clone to the destination folder
+        file = service.files().update(fileId=clone.get('id'), addParents=destinationFolder,
+                                    removeParents=previous_parents,
+                                    fields='id, parents').execute()
+        
+        # Apply general access permissions to file
+        permission = {'type': 'anyone',
+                'role': 'writer'}
+        service.permissions().create(fileId=clone.get('id'),body=permission).execute()
 
-            # Call the Sheets API
-            rows = [projectName, "https://docs.google.com/spreadsheets/d/" + items[0]['id']],["", ""]
-            resource = {
-            "majorDimension": "ROWS",
-            "values": rows
-            }
-            service.spreadsheets().values().append(spreadsheetId=SPREADSHEET_ID,range=RANGE_NAME,body=resource,valueInputOption="USER_ENTERED").execute()
-            
-            return success
+        # Call sheets api client
+        service = build('sheets', 'v4', credentials=creds)
+
+        # Insert project data in spreadsheet
+        rows = [projectName, "https://docs.google.com/spreadsheets/d/" + clone.get('id')],["", ""]
+        resource = {
+        "majorDimension": "ROWS",
+        "values": rows
+        }
+        service.spreadsheets().values().append(spreadsheetId=SPREADSHEET_ID,range=RANGE_NAME,body=resource,valueInputOption="USER_ENTERED").execute()
+        
+        return success
+
     except HttpError as error:
         # TODO(developer) - Handle errors from drive API.
         print(f'An error occurred: {error}')
