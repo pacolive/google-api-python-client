@@ -23,9 +23,9 @@ def moveRenameFile(request):
     SCOPES = ['https://www.googleapis.com/auth/drive','https://www.googleapis.com/auth/spreadsheets']
 
     # The ID and range of a sample spreadsheet.
-    SPREADSHEET_ID = '1rQuZB_9PAjhD8YoueAXzfUoLLLg9CzAnX74TrWNfs6I'
+    SPREADSHEET_ID = ''
     RANGE_NAME = 'URLWEBIA!A:B'
-
+    destinationFolder = ''
     success = "success"
     error = "error"
 
@@ -38,9 +38,6 @@ def moveRenameFile(request):
     # Define Project Name
     projectName = request.args.get('projectname').split('-', 1)[0]
     print(projectName)
-
-    #destinationFolder = '1LN1_ZfANuOuEKjSIahjDBmwgx1V6-4qw'
-    destinationFolder = '1elS4f5LqW0mvp0xTdTKbUYGOnGXMEuk5'
 
     # The file token.json stores the user's access and refresh tokens, and is
     # created automatically when the authorization flow completes for the first
